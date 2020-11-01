@@ -5,6 +5,8 @@
 int
 shm_create(struct cmn_shm *shm)
 {
+    int alloc_size = 0;
+
     if (shm->key <= 0) {
         if (shm->filename == NULL) {
             log_error("parameter is invalid, filename is null");
@@ -18,7 +20,10 @@ shm_create(struct cmn_shm *shm)
         }
     }
 
-    shm->sid = shmget(shm->key, shm->size, (IPC_CREAT | IPC_EXCL | 0660));
+    alloc_size = shm->size + (shm->size%8);
+    shm->size = alloc_size;
+
+    shm->sid = shmget(shm->key, alloc_size, (IPC_CREAT | IPC_EXCL | 0660));
     if (shm->sid < 0) {
         log_error("shmget(%uz) failed, errno:%s", shm->size, strerror(errno));
         return CMN_ERROR;

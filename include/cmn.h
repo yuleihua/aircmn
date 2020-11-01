@@ -20,6 +20,7 @@
 #include <libgen.h>
 #include <poll.h>
 #include <pthread.h>
+#include <endian.h>
 
 #include <sys/time.h>
 #include <sys/timeb.h>
@@ -93,13 +94,14 @@ typedef unsigned long int	cmn_uintptr;
 #endif
 
 
-#define CMN_OK    (0)
-#define CMN_ERROR (-1)
-#define CMN_NOKEY (-2)
-#define CMN_EMEM  (-3)
-#define CMN_EAGAIN (-4)
-#define CMN_ENOFILE (-5)
-#define CMN_ETIMEOUT (-6)
-#define CMN_EEVENT (-7)
+#define CMN_OK        (0)
+#define CMN_ERROR     (-1)
+#define CMN_NOKEY     (-2)
+#define CMN_EMEM      (-3)
+#define CMN_EAGAIN    (-4)
+#define CMN_ENOFILE   (-5)
+#define CMN_ETIMEOUT  (-6)
+#define CMN_EEVENT    (-7)
+#define CMN_PARAMETER (-8)
 
 #endif

@@ -3,20 +3,14 @@
 #include "cmn_array.h"
 
 struct array *
-array_create(uint32_t n, size_t size)
+array_create(uint32_t n, int32_t size)
 {
     struct array *a;
 
     ASSERT(n != 0 && size != 0);
 
-    a = cmn_alloc(sizeof(*a));
+    a = cmn_alloc(sizeof(*a) + n * size);
     if (a == NULL) {
-        return NULL;
-    }
-
-    a->elem = cmn_alloc(n * size);
-    if (a->elem == NULL) {
-        cmn_free(a);
         return NULL;
     }
 
@@ -31,14 +25,13 @@ void
 array_destroy(struct array **a)
 {
     if (*a != NULL) {
-        array_deinit(*a);
         cmn_free(*a);
         *a= NULL;
     }
 }
 
 void
-array_setup(struct array *a, uint32_t n, size_t size)
+array_setup(struct array *a, uint32_t n, int32_t size)
 {
     if (a != NULL) {
         a->nelem = 0;
@@ -51,36 +44,10 @@ void
 array_free(struct array *a)
 {
     if (a != NULL) {
+        memset(&a->data, 0x00, a->size * a->nalloc);
         a->nelem = 0;
         a->size = 0;
         a->nalloc = 0;
-    }
-}
-
-int
-array_init(struct array *a, uint32_t n, size_t size)
-{
-    ASSERT(n != 0 && size != 0);
-
-    a->elem = cmn_alloc(n * size);
-    if (a->elem == NULL) {
-        return CMN_EMEM;
-    }
-
-    a->nelem = 0;
-    a->size = size;
-    a->nalloc = n;
-
-    return CMN_OK;
-}
-
-void
-array_deinit(struct array *a)
-{
-    ASSERT(a->nelem == 0);
-
-    if (a->elem != NULL) {
-        cmn_free(a->elem);
     }
 }
 
@@ -90,9 +57,7 @@ array_idx(struct array *a, void *elem)
     uint8_t *p, *q;
     uint32_t off, idx;
 
-    ASSERT(elem >= a->elem);
-
-    p = a->elem;
+    p = (uint8_t *)&a->data;
     q = elem;
     off = (uint32_t)(q - p);
 
@@ -103,40 +68,46 @@ array_idx(struct array *a, void *elem)
     return idx;
 }
 
-void *
-array_push(struct array *a)
+int
+array_add(struct array *a, void *elem, uint32_t idx)
 {
-    void *elem, *new;
-    size_t size;
+    void *p = NULL;
 
-    if (a->nelem == a->nalloc) {
-
-        /* the array is full; allocate new array */
-        size = a->size * a->nalloc;
-        new = cmn_realloc(a->elem, 2 * size);
-        if (new == NULL) {
-            return NULL;
-        }
-
-        a->elem = new;
-        a->nalloc *= 2;
+    if (idx == a->nalloc) {
+        return CMN_EMEM;
     }
 
-    elem = (uint8_t *)a->elem + a->size * a->nelem;
+    p = (uint8_t *)&a->data + a->size * idx;
+    memcpy(p, elem, a->size);
+
+    return CMN_OK;
+}
+
+int
+array_push(struct array *a, void *elem)
+{
+    void *p = NULL;
+
+    if (a->nelem == a->nalloc) {
+        return CMN_EMEM;
+    }
+
+    p = (uint8_t *)&a->data + a->size * a->nelem;
+    memcpy(p, elem, a->size);
     a->nelem++;
 
-    return elem;
+    return CMN_OK;
 }
 
 void *
 array_pop(struct array *a)
 {
-    void *elem;
+    void *elem = NULL;
 
     ASSERT(a->nelem != 0);
 
     a->nelem--;
-    elem = (uint8_t *)a->elem + a->size * a->nelem;
+    elem = (uint8_t *)&a->data + a->size * a->nelem;
 
     return elem;
 }
@@ -149,7 +120,7 @@ array_get(struct array *a, uint32_t idx)
     ASSERT(a->nelem != 0);
     ASSERT(idx < a->nelem);
 
-    elem = (uint8_t *)a->elem + (a->size * idx);
+    elem = (uint8_t *)&a->data + (a->size * idx);
 
     return elem;
 }
@@ -163,21 +134,11 @@ array_top(struct array *a)
 }
 
 void
-array_swap(struct array *a, struct array *b)
-{
-    struct array tmp;
-
-    tmp = *a;
-    *a = *b;
-    *b = tmp;
-}
-
-void
 array_sort(struct array *a, array_compare_t compare)
 {
     ASSERT(a->nelem != 0);
 
-    qsort(a->elem, a->nelem, a->size, compare);
+    qsort(&a->data, a->nelem, a->size, compare);
 }
 
 int

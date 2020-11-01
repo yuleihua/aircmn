@@ -2,8 +2,6 @@
 #include "cmn_log.h"
 #include "cmn_ring.h"
 
-#define RING_ARRAY_HDR_SIZE   offsetof(struct ring, data)
-
 /**
  * The total number of slots allocated is (cap + 1)
  *
@@ -60,7 +58,7 @@ ring_nelem(uint32_t rpos, uint32_t wpos, uint32_t cap)
 }
 
 int
-ring_push(const void *elem, struct ring *r)
+ring_push(struct ring *r, const void *elem)
 {
     uint32_t new_wpos;
 
@@ -92,7 +90,7 @@ ring_full(const struct ring *r)
 }
 
 int
-ring_pop(void *elem, struct ring *r)
+ring_pop(struct ring *r, void *elem)
 {
     uint32_t new_rpos;
 
@@ -128,13 +126,13 @@ ring_flush(struct ring *r)
 }
 
 struct ring *
-ring_create(size_t elem_size, uint32_t cap)
+ring_create(uint32_t cap, int32_t elem_size)
 {
-    struct ring *r;
+    struct ring *r = NULL;
+    uint32_t alloc_size = 0;
 
-    /* underlying array has # items stored + 1, since full is when wpos is 1
-       element behind wpos */
-    r = cmn_alloc(RING_ARRAY_HDR_SIZE + elem_size * (cap + 1));
+    alloc_size = RING_HDR_SIZE + elem_size * (cap + 1);
+    r = cmn_alloc(alloc_size);
     if (r == NULL) {
         log_error("Could not allocate memory for ring array cap %u "
                   "elem_size %u", cap, elem_size);
@@ -159,4 +157,13 @@ ring_destroy(struct ring **r)
 
     cmn_free(*r);
     *r = NULL;
+}
+
+void
+ring_setup(struct ring *r, uint32_t cap, int32_t elem_size)
+{
+    r->elem_size = elem_size;
+    r->cap = cap;
+    r->rpos = r->wpos = 0;
+    return;
 }
